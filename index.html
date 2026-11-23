@@ -1,0 +1,509 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>body{margin:0;font-size:14px}[hidden]{display:none!important}</style>
+<title>Кингисепп · торгово-офисное здание</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600&family=Unbounded:wght@500;600&display=swap">
+<style>
+/* Макет: 3D-сцена на весь экран, поверх — карточка проекта, переключатель видов снизу и выдвижная панель материалов справа. Одна светлая тема — палитра фасада. */
+:root {
+  color-scheme: light;
+  --ink: #23272a; --anth: #383e42; --muted: #6a7075; --line: #d3d6d8;
+  --panel: rgba(244, 245, 245, 0.88); --panel-solid: #f3f4f4; --chip: #e4e6e7; --sky: #c9d5df;
+  --font-display: "Unbounded", "Onest", system-ui, sans-serif;
+  --font-body: "Onest", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+html, body { height: 100%; }
+body { background: var(--sky); color: var(--ink); font-family: var(--font-body); overflow: hidden; }
+#stage { position: fixed; inset: 0; }
+#stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.ui { position: fixed; z-index: 5; }
+.card { top: calc(env(safe-area-inset-top, 0px) + 16px); left: max(16px, env(safe-area-inset-left, 0px));
+  background: var(--panel); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,0.6); border-radius: 10px; padding: 14px 18px; max-width: min(400px, calc(100vw - 32px)); box-shadow: 0 6px 24px rgba(30,36,40,0.12); }
+.eyebrow { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.card h1 { font-family: var(--font-display); font-weight: 600; font-size: 19px; line-height: 1.2; margin: 6px 0 8px; text-wrap: balance; }
+.facts { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12.5px; color: var(--muted); }
+.facts b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+.tools { top: calc(env(safe-area-inset-top, 0px) + 16px); right: max(16px, env(safe-area-inset-right, 0px)); display: flex; gap: 8px; align-items: center; }
+.seg { display: inline-flex; background: var(--panel); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-radius: 8px; padding: 3px; box-shadow: 0 4px 16px rgba(30,36,40,0.1); }
+button { font: inherit; color: inherit; cursor: pointer; }
+.seg button { border: 0; background: transparent; padding: 7px 12px; border-radius: 6px; font-size: 13px; font-weight: 500; }
+.seg button[aria-pressed="true"] { background: var(--anth); color: #f2f3f3; }
+.btn-main { border: 0; background: var(--anth); color: #f2f3f3; border-radius: 8px; padding: 10px 14px; font-size: 13px; font-weight: 600; box-shadow: 0 4px 16px rgba(30,36,40,0.18); }
+button:focus-visible { outline: 2px solid #1d6fb8; outline-offset: 2px; }
+.views { left: 0; right: 0; bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); display: flex; justify-content: center; pointer-events: none;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.views-inner { pointer-events: auto; display: flex; gap: 10px; align-items: stretch; overflow-x: auto; max-width: 100%;
+  background: var(--panel); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-radius: 10px; padding: 6px; box-shadow: 0 6px 24px rgba(30,36,40,0.14); scrollbar-width: none; }
+.views-inner::-webkit-scrollbar { display: none; }
+.vgroup { display: flex; gap: 4px; align-items: center; }
+.vgroup + .vgroup { border-left: 1px solid var(--line); padding-left: 10px; }
+.vlabel { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); writing-mode: vertical-rl; transform: rotate(180deg); padding: 0 2px; }
+.vbtn { border: 0; background: transparent; padding: 8px 11px; border-radius: 7px; font-size: 13px; white-space: nowrap; font-weight: 500; }
+.vbtn:hover { background: var(--chip); }
+.vbtn[aria-pressed="true"] { background: var(--anth); color: #f2f3f3; }
+.hint { left: max(16px, env(safe-area-inset-left, 0px)); bottom: calc(env(safe-area-inset-bottom, 0px) + 78px); font-size: 12px; color: #3b4246; background: rgba(244,245,245,0.7); padding: 4px 8px; border-radius: 6px; }
+.drawer { top: 0; right: 0; bottom: 0; width: min(460px, 100vw); background: var(--panel-solid); box-shadow: -10px 0 40px rgba(30,36,40,0.18); z-index: 10;
+  display: flex; flex-direction: column; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+.dhead { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 18px max(16px, env(safe-area-inset-right, 0px)) 12px 20px; border-bottom: 1px solid var(--line); }
+.dhead h2 { font-family: var(--font-display); font-weight: 600; font-size: 17px; margin: 4px 0 0; }
+.close { border: 1px solid var(--line); background: #fff; border-radius: 8px; padding: 6px 10px; font-size: 13px; }
+.dbody { overflow-y: auto; padding: 12px max(16px, env(safe-area-inset-right, 0px)) 28px 20px; min-height: 0; }
+.palette { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin: 6px 0 16px; }
+.pal { border-radius: 6px; overflow: hidden; border: 1px solid var(--line); background: #fff; font-size: 10.5px; line-height: 1.25; }
+.pal i { display: block; height: 34px; } .pal div { padding: 5px 6px; color: var(--muted); } .pal b { display: block; color: var(--ink); font-weight: 600; }
+.sec { margin-top: 18px; }
+.sec h3 { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 0 0 6px; font-weight: 600; }
+.row { display: grid; grid-template-columns: 14px 1fr auto; gap: 4px 10px; padding: 10px 0; border-top: 1px solid var(--line); align-items: start; }
+.sw { width: 14px; height: 14px; border-radius: 3px; border: 1px solid rgba(0,0,0,0.12); display: inline-block; }
+.row .sw { margin-top: 3px; }
+.row .name { font-weight: 600; font-size: 13.5px; line-height: 1.3; }
+.row .where { grid-column: 2 / 4; font-size: 12.5px; color: var(--muted); line-height: 1.4; }
+.row .price { text-align: right; font-size: 13px; font-variant-numeric: tabular-nums; white-space: nowrap; line-height: 1.3; }
+.row .price small { display: block; color: var(--muted); font-size: 11px; }
+.note { font-size: 12.5px; color: var(--muted); line-height: 1.5; margin-top: 18px; padding: 12px; background: #fff; border-radius: 8px; border: 1px solid var(--line); }
+.note p { margin: 0 0 8px; } .note p:last-child { margin: 0; }
+.loading { position: fixed; inset: 0; display: grid; place-items: center; background: var(--sky); z-index: 20; font-family: var(--font-display); font-size: 15px; color: var(--anth); transition: opacity .5s; text-align: center; padding: 16px; }
+@media (max-width: 720px) {
+  .card { padding: 10px 12px; } .card h1 { font-size: 15px; margin: 4px 0 6px; } .facts { display: none; }
+  .tools { top: auto; bottom: calc(env(safe-area-inset-bottom, 0px) + 78px); } .hint { display: none; }
+  .drawer { top: auto; height: 72%; width: 100%; border-radius: 14px 14px 0 0; } .vlabel { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { .loading { transition: none; } }
+/* галерея фотореалистичных рендеров */
+.btn-ghost { border: 0; background: var(--panel); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-radius: 8px; padding: 10px 14px; font-size: 13px; font-weight: 600; box-shadow: 0 4px 16px rgba(30,36,40,0.1); }
+.gallery { position: fixed; inset: 0; z-index: 30; background: rgba(20,23,26,0.94); color: #eef0f1; display: flex; flex-direction: column;
+  padding: calc(env(safe-area-inset-top, 0px) + 14px) max(16px, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 14px) max(16px, env(safe-area-inset-left, 0px)); }
+.ghead { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; }
+.ghead h2 { font-family: var(--font-display); font-weight: 600; font-size: 17px; margin: 0; }
+.ghead .eyebrow { color: #a8aeb2; }
+.gclose { border: 1px solid rgba(255,255,255,0.25); background: transparent; color: #eef0f1; border-radius: 8px; padding: 6px 12px; font-size: 13px; }
+.gmain { flex: 1; min-height: 0; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; }
+.gmain figure { margin: 0; height: 100%; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; }
+.gmain img { max-width: 100%; max-height: calc(100% - 30px); object-fit: contain; border-radius: 6px; background: #2a2e31; }
+.gmain figcaption { font-size: 13px; color: #c4c9cc; }
+.gnav { border: 0; background: rgba(255,255,255,0.1); color: #fff; width: 44px; height: 44px; border-radius: 50%; font-size: 20px; }
+.gnav:hover { background: rgba(255,255,255,0.2); }
+.thumbs { display: flex; gap: 6px; overflow-x: auto; padding-top: 10px; scrollbar-width: thin; }
+.thumbs button { border: 2px solid transparent; padding: 0; border-radius: 5px; background: none; flex: 0 0 auto; }
+.thumbs button[aria-current="true"] { border-color: #fff; }
+.thumbs img { display: block; width: 112px; height: 63px; object-fit: cover; border-radius: 3px; }
+.credits { font-size: 11.5px; color: var(--muted); line-height: 1.5; margin-top: 14px; }
+.credits a { color: inherit; }
+@media (max-width: 720px) { .gnav { display: none; } .gmain { grid-template-columns: 1fr; } .thumbs img { width: 84px; height: 47px; } }
+</style>
+</head><body>
+
+<div id="stage" aria-label="3D-модель здания"></div>
+<div class="loading" id="loading">Загружаем модель…</div>
+
+<header class="ui card">
+  <div class="eyebrow">Кингисепп · модель из Blender</div>
+  <h1>Торгово-офисное здание 30×30 м</h1>
+  <div class="facts"><span>Общая площадь <b>≈1 480 м²</b></span><span>1 этаж: <b>продуктовый магазин</b></span><span>2 этаж: <b>43 кабинета</b> по 10–12 м²</span></div>
+</header>
+
+<div class="ui tools">
+  <div class="seg" role="group" aria-label="Время суток">
+    <button id="t-day" aria-pressed="true">День</button>
+    <button id="t-eve" aria-pressed="false">Вечер</button>
+  </div>
+  <button class="btn-ghost" id="open-gal" aria-expanded="false" aria-controls="gallery">Фото-рендеры</button>
+  <button class="btn-main" id="open-mat" aria-expanded="false" aria-controls="drawer">Материалы и цены</button>
+</div>
+
+<section class="gallery" id="gallery" hidden aria-label="Фотореалистичные рендеры" aria-modal="true" role="dialog">
+  <div class="ghead">
+    <div><div class="eyebrow">Blender Cycles · 1920×1080</div><h2>Фотореалистичные рендеры</h2></div>
+    <button class="gclose" id="close-gal">Закрыть</button>
+  </div>
+  <div class="gmain">
+    <button class="gnav" id="g-prev" aria-label="Предыдущий">‹</button>
+    <figure><img id="g-img" alt=""><figcaption id="g-cap"></figcaption></figure>
+    <button class="gnav" id="g-next" aria-label="Следующий">›</button>
+  </div>
+  <div class="thumbs" id="g-thumbs"></div>
+</section>
+<div class="ui hint">Вращение — левая кнопка мыши, сдвиг — правая, масштаб — колесо</div>
+<nav class="ui views" aria-label="Виды"><div class="views-inner" id="views"></div></nav>
+
+<aside class="ui drawer" id="drawer" hidden aria-label="Материалы и цены">
+  <div class="dhead">
+    <div><div class="eyebrow">Кингисепп, Ленинградская обл. · ноябрь 2026</div><h2>Материалы и цены за м²</h2></div>
+    <button class="close" id="close-mat">Закрыть</button>
+  </div>
+  <div class="dbody" id="matlist"></div>
+</aside>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+
+// ---------------- материалы и цены ----------------
+const PALETTE = [
+  ['#d4d6d6', 'Светло-серый', '≈ RAL 7047'],
+  ['#b3b7b9', 'Серый «цемент»', '≈ RAL 7038'],
+  ['#e4e5e5', 'Стены интерьера', 'NCS S 1000-N'],
+  ['#4b4f53', 'Графит', 'RAL 7024'],
+  ['#383d41', 'Антрацит', 'RAL 7016'],
+];
+const MAT = [
+  { t: 'Фасад', rows: [
+    ['#d4d6d6', 'Керамогранит фасадный 600×1200, светло-серый матовый «бетон»', '2 этаж и парапет.', '1 900–3 000', '5 500–8 000'],
+    ['#b3b7b9', 'Керамогранит фасадный 600×1200, серый «цемент»', '1 этаж, на тон темнее верха.', '1 900–3 000', '5 500–8 000'],
+    ['#4b4f53', 'Керамогранит 600×600, графит', 'Цоколь высотой 350 мм.', '1 700–2 800', '5 000–7 500'],
+    ['#383d41', 'Кассеты из АКП с негорючим наполнителем (A2), RAL 7016', 'Пилоны, межэтажный пояс, порталы входа и витрин, обрамления окон. Бюджетно — стальные кассеты: 5 500–7 500 под ключ.', '2 800–4 500', '8 500–13 000'],
+    ['#383d41', 'Вертикальные алюминиевые ламели 50×200, RAL 7016', 'Глухие участки 1 этажа фасада А. Цена за м² закрываемой стены.', '—', '7 000–11 000'],
+    ['#9fb0b8', 'Витражи и окна: алюминиевый профиль RAL 7016, нейтральное стекло', 'Центральная группа — вход в магазин, крайние — витрины без дверей.', '—', '19 000–30 000'],
+    ['#383d41', 'Козырёк над входом: стальной каркас + АКП RAL 7016', 'Только над центральным входом, со светильниками. Цена за м² козырька.', '—', '28 000–45 000'],
+    ['#d9dbdc', 'Реечный алюминиевый потолок, уличный', 'Потолок навеса-парковки.', '1 300–2 200', '3 000–4 800'],
+    ['#383d41', 'Огнезащита + эмаль RAL 7016', 'Колонны навеса, эвакуационная лестница.', '—', '900–1 800'],
+    ['#383d41', 'Парапетные крышки и отливы RAL 7016', 'Цена за погонный метр.', '—', '900–1 600 /п.м'],
+    ['#f4ecd8', 'Архитектурная подсветка, LED IP67', 'Пилоны, козырёк. Цена за погонный метр.', '—', '4 000–7 500 /п.м'],
+  ]},
+  { t: '1 этаж — продуктовый магазин', rows: [
+    ['#d2d3d0', 'Керамогранит 600×600 светло-серый, R10, PEI 5', 'Пол торгового зала: износостойкий, нескользкий, выдерживает тележки и уборку машиной.', '1 300–2 500', '2 700–4 400'],
+    ['#e4e5e5', 'Моющаяся матовая краска NCS S 1000-N', 'Стены торгового зала и вестибюля.', '200–450', '950–1 600'],
+    ['#41464a', 'Потолок грильято 50×50, RAL 7024 + линейные светильники', 'Линии света над проходами между стеллажами (светильники отдельно).', '900–1 500', '1 500–2 400'],
+    ['#4e5357', 'Микроцемент графит', 'Стена у лестницы в офисы.', '900–1 800', '3 000–5 500'],
+    ['#b9bcbd', 'Полимерный наливной пол, серый', 'Склад, приёмка товара, коридор подсобных помещений.', '900–1 800', '1 800–3 500'],
+    ['#e9ebeb', 'Стены подсобных помещений: моющаяся краска или ПВХ-панели', 'Склад, комната персонала, у холодильных камер.', '250–700', '1 000–1 900'],
+    ['#383d41', 'Алюминиевые грязезащитные решётки', 'У входа в магазин.', '—', '20 000–35 000'],
+    ['#3a3f42', 'Санузел персонала: керамогранит 600×600 + перегородки HPL', 'Плитка на пол и стены; HPL — 12 000–20 000 за м².', '1 000–2 000', '2 800–4 500'],
+    ['#3e4347', 'Ступени лестницы в офисы: керамогранит антрацит', 'Ограждение — стекло с поручнем RAL 7016: 18 000–32 000 за п.м.', '—', '3 500–6 500 /п.м'],
+  ]},
+  { t: '2 этаж — 43 кабинета', rows: [
+    ['#e4e5e5', 'Перегородки кабинетов: ГКЛ 2×12,5 мм с каждой стороны + минвата 50 мм', 'Звукоизоляция между кабинетами ≈ 45–50 дБ. Цена без окраски.', '900–1 500', '2 300–3 800'],
+    ['#d9dbdb', 'Двери кабинетов светло-серые, коробка графит, стеклянная вставка рядом', 'Вставка даёт свет в 17 кабинетов без окон. Цена за дверной блок.', '—', '22 000–40 000 /шт'],
+    ['#8e8e8b', 'Ковровая плитка 50×50, серый меланж, класс 33', 'Пол кабинетов.', '1 400–3 000', '1 800–3 600'],
+    ['#d6d7d5', 'Керамогранит 600×1200 «светлый бетон»', 'Коридоры, холл у лестницы, кухня. Альтернатива — кварцвинил 43 класса: 2 700–4 500.', '1 400–2 800', '2 800–4 800'],
+    ['#e4e5e5', 'Моющаяся краска NCS S 1000-N', 'Стены кабинетов и коридоров.', '200–450', '950–1 600'],
+    ['#eceded', 'Подвесной потолок 600×600 + LED-панель 4000 K в каждом кабинете', 'Минераловатные плиты. Акустические — 2 400–3 900 под ключ.', '450–900', '1 000–1 700'],
+    ['#9fb0b8', 'Стеклянные перегородки переговорных, профиль RAL 7016', 'Две переговорные в центре этажа.', '—', '9 000–16 000'],
+    ['#585d61', 'Акустические панели PET-войлок, графит', 'Кухня-столовая, переговорные.', '2 500–4 500', '3 800–6 500'],
+  ]},
+  { t: 'Благоустройство', rows: [
+    ['#aeb1b2', 'Плитка мощения 80 мм, серая с полосами графит', 'Площадь у входа, тротуары. Под ключ — с основанием.', '800–1 300', '2 100–3 300'],
+  ]},
+];
+function renderMaterials() {
+  const el = document.getElementById('matlist');
+  const pal = '<div class="palette">' + PALETTE.map(([c, n, code]) => `<div class="pal"><i style="background:${c}"></i><div><b>${n}</b>${code}</div></div>`).join('') + '</div>';
+  const secs = MAT.map(s => `<section class="sec"><h3>${s.t}</h3>` + s.rows.map(([c, name, where, m, k]) => `
+    <div class="row"><i class="sw" style="background:${c}"></i><div class="name">${name}</div>
+      <div class="price">${k}<small>материал ${m}</small></div><div class="where">${where}</div></div>`).join('') + '</section>').join('');
+  const note = `<div class="note">
+    <p>Площади: коробка 30×30 м, высота 8 м. 1 этаж закрытый ≈ 583 м² (торговый зал ≈ 300 м², подсобка ≈ 220 м²) + навес-парковка ≈ 317 м²; 2 этаж 900 м². Общая площадь ≈ 1 480 м² по наружному контуру.</p>
+    <p>Справа — цена под ключ в ₽/м² (материал + монтаж), под ней — только материал. «/п.м» — за погонный метр, «/шт» — за штуку.</p>
+    <p>Ориентир на ноябрь 2026 года для Кингисеппа: материалы из Санкт-Петербурга с доставкой, работы по ставкам Ленинградской области. Торговое и холодильное оборудование магазина, мебель и светильники в цены не входят.</p>
+    <p>Навесной фасад — класса К0 с техническим свидетельством, АКП только с негорючим наполнителем A2.</p></div>`;
+  const sf = (uid, t, a) => `<a href="https://sketchfab.com/models/${uid}" target="_blank" rel="noopener">«${t}»</a> — ${a}`;
+  const credits = `<div class="credits"><b>Модели окружения</b> (Sketchfab, лицензия CC BY 4.0): ` + [
+    sf('08fe5117138e4fdaa7ca440ef1201e07', 'Five Birch trees pack', 'lolipop_1707'), sf('c0c3aa73cc9945d2a36c01a0d8d6d4bb', 'Linden tree', 'intice184'),
+    sf('7a5db417827244d98827459bce0cc944', 'Spruce tree', 'intice184'), sf('bae9fb0f30b24231bc5b1caadbfaa4c3', 'Scots Pine Trees', 'RBG_illustrations'),
+    sf('844e6a315757431da97efb5f17383bb5', 'bush', 'levandreev23032010'), sf('3c333139feb744ae9d36767c0e9cabfd', 'Lada Vesta', 'tiunov.se'),
+    sf('74d0168d94fd486889f93e7f0c6cd264', 'Lada Vesta SW NG', 'Streetsraker'), sf('bab77902c638427bb85e68b6762a481f', '2016 Volkswagen Polo', 'BHP3D'),
+    sf('143a2b1ea5eb4385ae90a73657aca3bc', 'Nathan Animated 003', 'Renderpeople'), sf('dc448c3be0e74f96a55fb475a13433cf', 'Sophia Animated 003', 'Renderpeople'),
+    sf('07f308b81bc045c8917104a72ce2ffe4', 'Mei Posed 001', 'Renderpeople'), sf('e211ffd52a96416e89c0cc415a388d61', 'Dennis Posed 004', 'Renderpeople'),
+    sf('b228a29fa84544c2be501c295653ffe7', 'Office Chair', 'nokillnando'), sf('544d4c1621254fa28144c2f1e27287a7', 'ZZ Plant in Ceramic Pot', 'Jerovdl'),
+  ].join('; ') + `. Небо (HDRI), асфальт, фрукты и овощи — <a href="https://polyhaven.com" target="_blank" rel="noopener">Poly Haven</a> (CC0). Упаковка товаров — вымышленные марки.</div>`;
+  el.innerHTML = pal + secs + note + credits;
+}
+renderMaterials();
+
+
+// ---------------- 3D ----------------
+const stage = document.getElementById('stage');
+const small = Math.min(innerWidth, innerHeight) < 700;
+const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, small ? 1.5 : 1.5));
+renderer.setSize(stage.clientWidth, stage.clientHeight);
+renderer.toneMapping = THREE.AgXToneMapping;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+stage.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(36, stage.clientWidth / stage.clientHeight, 0.05, 4000);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.dampingFactor = 0.08; controls.maxPolarAngle = Math.PI * 0.495; controls.minDistance = 0.3; controls.maxDistance = 400;
+scene.fog = new THREE.Fog('#c9d3dc', 260, 1300);
+const aniso = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+
+// постобработка: мягкое затенение углов (GTAO) — только на компьютерах
+const composer = new EffectComposer(renderer, new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: small ? 0 : 4 }));
+composer.addPass(new RenderPass(scene, camera));
+let gtao = null;
+if (!small) {
+  gtao = new GTAOPass(scene, camera, stage.clientWidth, stage.clientHeight);
+  gtao.updateGtaoMaterial({ radius: 0.6, distanceExponent: 1.4, thickness: 1.2, scale: 1.0, samples: 12 });
+  gtao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 6, rings: 2, samples: 12 });
+  gtao.blendIntensity = 0.85;
+  composer.addPass(gtao);
+}
+composer.addPass(new OutputPass());
+function resizeAll() {
+  const w = stage.clientWidth, h = stage.clientHeight;
+  renderer.setSize(w, h); composer.setSize(w, h); composer.setPixelRatio(renderer.getPixelRatio());
+  camera.aspect = w / h; if (!anim) camera.fov = frameFor(curView).fov; camera.updateProjectionMatrix();
+}
+
+// процедурные текстуры плитки (UV модели — в метрах)
+let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+const shade = (hex, k) => { const c = new THREE.Color(hex); c.offsetHSL(0, 0, k); return '#' + c.getHexString(); };
+function tileTex(base, joint, cols, rows, spanU, spanV, vary = 0.02, jw = 3, grain = 1500) {
+  const w = 512, h = Math.round(512 * spanV / spanU); const c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d');
+  g.fillStyle = joint; g.fillRect(0, 0, w, h); const tw = w / cols, th = h / rows;
+  for (let i = 0; i < cols; i++) for (let j = 0; j < rows; j++) { g.fillStyle = shade(base, (rnd() - 0.5) * vary * 2); g.fillRect(i * tw + jw / 2, j * th + jw / 2, tw - jw, th - jw); }
+  for (let i = 0; i < grain; i++) { const v = Math.floor(rnd() * 255); g.fillStyle = `rgba(${v},${v},${v},0.05)`; g.fillRect(rnd() * w, rnd() * h, 2, 2); }
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(1 / spanU, 1 / spanV); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = aniso; return t;
+}
+function noiseTex(base, span, amp = 0.08, n = 22000) {
+  const c = document.createElement('canvas'); c.width = c.height = 256; const g = c.getContext('2d'); g.fillStyle = base; g.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < n; i++) { const v = Math.floor(rnd() * 255); g.fillStyle = `rgba(${v},${v},${v},${amp})`; g.fillRect(rnd() * 256, rnd() * 256, 2, 2); }
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(1 / span, 1 / span); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = aniso; return t;
+}
+// газон: пятна разной зелени + мелкие «травинки»
+function lawnTex() {
+  const S = 512, c = document.createElement('canvas'); c.width = c.height = S; const g = c.getContext('2d');
+  g.fillStyle = '#3f5a22'; g.fillRect(0, 0, S, S);
+  for (let i = 0; i < 90; i++) { const r = 20 + rnd() * 70; const gr = g.createRadialGradient(0, 0, 0, 0, 0, r); const col = rnd() < 0.5 ? '74,104,42' : '52,76,28';
+    gr.addColorStop(0, `rgba(${col},0.35)`); gr.addColorStop(1, `rgba(${col},0)`); g.save(); g.translate(rnd() * S, rnd() * S); g.fillStyle = gr; g.fillRect(-r, -r, 2 * r, 2 * r); g.restore(); }
+  for (let i = 0; i < 26000; i++) { const x = rnd() * S, y = rnd() * S, l = 2 + rnd() * 5; const v = rnd();
+    g.strokeStyle = v < 0.5 ? `rgba(98,130,56,${0.25 + rnd() * 0.3})` : `rgba(32,52,18,${0.25 + rnd() * 0.3})`; g.lineWidth = 1;
+    g.beginPath(); g.moveTo(x, y); g.lineTo(x + (rnd() - 0.5) * 2, y - l); g.stroke(); }
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(1 / 4, 1 / 4); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = aniso; return t;
+}
+const TEX = {
+  'Керамогранит светло-серый 600x1200': () => tileTex('#d4d6d6', '#8d9193', 2, 4, 2.4, 2.4),
+  'Керамогранит серый цемент 600x1200': () => tileTex('#b3b7b9', '#7b8083', 2, 4, 2.4, 2.4, 0.025),
+  'Керамогранит графит 600x600 (цоколь)': () => tileTex('#4b4f53', '#2b2e31', 4, 4, 2.4, 2.4),
+  'АКП кассеты RAL 7016': () => tileTex('#383d41', '#1f2225', 2, 2, 2.4, 3.0, 0.012, 3, 300),
+  'Пол керамогранит светлый бетон': () => tileTex('#d6d7d5', '#b4b7b8', 2, 4, 2.4, 2.4, 0.015, 2),
+  'Пол магазина керамогранит 600x600 R10': () => tileTex('#d2d3d0', '#aeb1b1', 4, 4, 2.4, 2.4, 0.02, 2),
+  'Грильято RAL 7024': () => tileTex('#41464a', '#26292c', 8, 8, 1.2, 1.2, 0, 4, 0),
+  'Потолок Армстронг светло-серый': () => tileTex('#eceded', '#c4c7c8', 2, 2, 1.2, 1.2, 0.01, 3, 400),
+  'Ковровая плитка серый меланж': () => tileTex('#8e8e8b', '#82827f', 4, 4, 2.0, 2.0, 0.014, 1, 20000),
+  'Реечный потолок навеса': () => tileTex('#d9dbdc', '#9a9fa2', 1, 8, 1.2, 1.2, 0.01, 2, 200),
+  'Плитка мощения': () => tileTex('#aeb1b2', '#8a8e90', 8, 4, 2.4, 2.4, 0.04, 2),
+  'Плитка мощения графит': () => tileTex('#5f6366', '#45484b', 8, 4, 2.4, 2.4, 0.04, 2),
+  'Газон': lawnTex,
+  'Микроцемент графит': () => noiseTex('#4e5357', 2, 0.06),
+};
+const ROUGH = { 'Пол магазина керамогранит 600x600 R10': 0.18, 'Пол керамогранит светлый бетон': 0.3, 'Газон': 1.0 };
+// материалы с альфа-вырезом (листва, хвоя): экспорт из Blender
+const CUTOUT = new Set(['312-3124771_carol-of-the-bells-pine-needle-transparent.002', '312-3124771_carol-of-the-bells-pine-needle-transparent1', 'Birch_Atlas', 'M_Branch.001', 'M_Branch.005', 'Tree_1Mat', 'Tree_1Mat_0', 'vetka_kusta']);
+const LED_MATS = new Set(['LED тёплый', 'LED нейтральный', 'Буквы вывесок', 'Экран']);
+const groups = {};
+const ledMats = [];
+
+// небо и освещение — те же HDRI, что и в рендерах Blender (Poly Haven, CC0)
+const pmrem = new THREE.PMREMGenerator(renderer);
+const ENV = { day: { url: 'env/day.hdr' }, evening: { url: 'env/evening.hdr' } };
+async function loadEnv(key) {
+  const e = ENV[key]; if (e.tex) return e;
+  const hdr = await new RGBELoader().loadAsync(e.url);
+  hdr.mapping = THREE.EquirectangularReflectionMapping;
+  e.bg = hdr; e.tex = pmrem.fromEquirectangular(hdr).texture; return e;
+}
+const sun = new THREE.DirectionalLight('#fff3e3', 3.0); sun.castShadow = true;
+const sm = small ? 2048 : 4096; sun.shadow.mapSize.set(sm, sm);
+Object.assign(sun.shadow.camera, { left: -70, right: 70, top: 70, bottom: -70, near: 5, far: 330 });
+sun.shadow.bias = -0.0002; sun.shadow.normalBias = 0.03; sun.target.position.set(12, 0, 14); scene.add(sun, sun.target);
+const lights = [];
+function pl(x, y, z, g) { if (small) return; const l = new THREE.PointLight('#f4f6ff', 1, 14, 2); l.position.set(x, y, z); lights.push(l); (groups[g] || scene).add(l); }
+
+// направление на солнце совпадает с солнцем в HDRI (см. export_env_v3.py)
+const TIME = {
+  day: { sunDir: [-0.576, 0.682, 0.450], sun: 2.6, sunColor: '#fff1dc', env: 0.9, bg: 0.9, exp: 1.0, pt: 5, led: 1.0, fog: '#c9d3dc' },
+  evening: { sunDir: [-0.959, 0.196, 0.204], sun: 2.2, sunColor: '#ffb27a', env: 0.4, bg: 0.55, exp: 0.95, pt: 16, led: 3.0, fog: '#8a8a96' },
+};
+let curTime = 'day';
+async function setTime(key) {
+  const t = TIME[key]; curTime = key;
+  const e = await loadEnv(key); if (curTime !== key) return;
+  scene.environment = e.tex; scene.background = e.bg; scene.environmentIntensity = t.env; scene.backgroundIntensity = t.bg;
+  const d = new THREE.Vector3(...t.sunDir).normalize();
+  sun.position.copy(sun.target.position).addScaledVector(d, 170); sun.intensity = t.sun; sun.color.set(t.sunColor);
+  renderer.toneMappingExposure = t.exp;
+  lights.forEach(l => (l.intensity = t.pt)); ledMats.forEach(m => (m.emissiveIntensity = m.userData.base * t.led));
+  scene.fog.color.set(t.fog);
+  document.getElementById('t-day').setAttribute('aria-pressed', key === 'day');
+  document.getElementById('t-eve').setAttribute('aria-pressed', key === 'evening');
+}
+
+// UV по мировым координатам (в метрах): грань смотрит по X → (z, y), по Y → (x, z), по Z → (x, y)
+function worldUV(o) {
+  const g = o.geometry, p = g.attributes.position, n = g.attributes.normal; if (!p || !n) return;
+  const uv = new Float32Array(p.count * 2), v = new THREE.Vector3(), nn = new THREE.Vector3();
+  for (let i = 0; i < p.count; i++) {
+    v.fromBufferAttribute(p, i).applyMatrix4(o.matrixWorld);
+    nn.fromBufferAttribute(n, i);
+    const ax = Math.abs(nn.x), ay = Math.abs(nn.y), az = Math.abs(nn.z);
+    if (ax >= ay && ax >= az) { uv[i * 2] = v.z; uv[i * 2 + 1] = v.y; }
+    else if (ay >= az) { uv[i * 2] = v.x; uv[i * 2 + 1] = v.z; }
+    else { uv[i * 2] = v.x; uv[i * 2 + 1] = v.y; }
+  }
+  g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+}
+function fixMaterial(m, seen) {
+  if (seen.has(m)) return; seen.add(m);
+  const name = m.name;
+  if (TEX[name]) { m.map = TEX[name](); m.color.set('#ffffff'); }
+  if (ROUGH[name] !== undefined) m.roughness = ROUGH[name];
+  if (name === 'Стекло нейтральное') { m.transparent = true; m.opacity = 0.25; m.depthWrite = false; m.side = THREE.DoubleSide; m.roughness = 0.04; m.metalness = 0.15; m.envMapIntensity = 1.4; }
+  if (CUTOUT.has(name)) { m.transparent = false; m.alphaTest = 0.45; m.depthWrite = true; m.side = THREE.DoubleSide; m.alphaToCoverage = !small; }
+  // пропускание света (бутылки, стёкла машин) в браузере дорого — делаем просто полупрозрачным
+  if (m.transmission > 0) { m.transmission = 0; m.transparent = true; m.opacity = 0.45; m.depthWrite = false; }
+  if (LED_MATS.has(name) || (m.emissive && m.emissive.getHex() !== 0 && m.emissiveIntensity > 0)) { m.userData.base = name === 'Экран' ? 0.6 : 1.6; m.emissiveIntensity = m.userData.base; ledMats.push(m); }
+  if (m.map) m.map.anisotropy = aniso;
+  m.needsUpdate = true;
+}
+function prepare(root) {
+  const seen = new Set();
+  root.updateMatrixWorld(true);
+  root.traverse(o => { if (o.isMesh && TEX[o.material.name]) worldUV(o); });
+  const meshes = []; root.traverse(o => { if (o.isMesh) meshes.push(o); });
+  for (const o of meshes) {
+    const g = groupOf(o); (groups[g] = groups[g] || new THREE.Group()).name = g;
+    const name = o.material.name;
+    o.castShadow = !(name === 'Стекло нейтральное' || LED_MATS.has(name) || o.material.transparent); o.receiveShadow = true;
+    fixMaterial(o.material, seen);
+  }
+  // одинаковые модели (деревья, машины, люди, стулья) — в InstancedMesh: меньше вызовов отрисовки
+  const buckets = new Map();
+  for (const o of meshes) { o.updateWorldMatrix(true, false); const key = groupOf(o) + '|' + o.geometry.uuid + '|' + o.material.uuid; (buckets.get(key) || buckets.set(key, []).get(key)).push(o); }
+  for (const [key, list] of buckets) {
+    const g = key.split('|')[0];
+    if (list.length >= 3) {
+      const im = new THREE.InstancedMesh(list[0].geometry, list[0].material, list.length);
+      list.forEach((o, i) => im.setMatrixAt(i, o.matrixWorld));
+      im.castShadow = list[0].castShadow; im.receiveShadow = true; im.name = list[0].name; im.computeBoundingSphere();
+      groups[g].add(im); list.forEach(o => o.removeFromParent());
+    } else {
+      for (const o of list) { const w = o.matrixWorld.clone(); groups[g].add(o); o.matrix.copy(w); o.matrix.decompose(o.position, o.quaternion, o.scale); }
+    }
+  }
+  Object.values(groups).forEach(g => scene.add(g));
+  for (const [x, z] of [[3, 3], [3, 9], [7.5, 6], [7.5, 13], [3, 16], [3, 22], [6, 26], [9.8, 25]]) pl(x, 2.9, z, 'int1');
+  for (const [x, z] of [[4.9, 10], [25.1, 10], [15, 4.9], [19, 25.1], [8, 25], [14.5, 17], [18.6, 15], [25.1, 22]]) pl(x, 6.5, z, 'int2');
+}
+function groupOf(o) { let p = o; while (p) { if (p.name && p.name.includes('__')) return p.name.split('__')[0]; p = p.parent; } return 'env'; }
+
+// ---------------- виды ----------------
+const VIEWS = [
+  { id: 'a-g', g: 'Снаружи', label: 'Фасады А и Г', cam: [-27, 5.2, 55], tgt: [11, 4.6, 14], fov: 36 },
+  { id: 'a-b', g: 'Снаружи', label: 'Фасады А и Б', cam: [-25, 5.2, -27], tgt: [12, 4.6, 15], fov: 36 },
+  { id: 'carport', g: 'Снаружи', label: 'Навес, фасад В', cam: [60, 6.5, 45], tgt: [19, 3.6, 14], fov: 36 },
+  { id: 'aerial', g: 'Снаружи', label: 'С высоты', cam: [-50, 54, 80], tgt: [14, 0, 14], fov: 36 },
+  { id: 'floor1', g: 'Этажи', label: 'Магазин сверху', cam: [-15, 31, 46], tgt: [9, 0, 15], fov: 36, hide: ['L2', 'slab2', 'roof', 'ceil1', 'ceil2', 'int2'] },
+  { id: 'floor2', g: 'Этажи', label: 'Кабинеты сверху', cam: [15, 44, 40], tgt: [15, 3.9, 15], fov: 40, hide: ['roof', 'ceil2'] },
+  { id: 'store', g: 'Внутри', label: 'Магазин', cam: [1.3, 1.7, 13.4], tgt: [10, 1.2, 5.5], fov: 66, inside: true },
+  { id: 'checkout', g: 'Внутри', label: 'Кассы', cam: [7.6, 1.7, 26.6], tgt: [1.5, 0.9, 18.6], fov: 64, inside: true },
+  { id: 'corridor', g: 'Внутри', label: 'Коридор', cam: [25.1, 5.55, 4.9], tgt: [6, 5.25, 4.9], fov: 62, inside: true },
+  { id: 'office', g: 'Внутри', label: 'Кабинет', cam: [16.75, 5.45, 26.22], tgt: [15.0, 4.95, 29.6], fov: 74, inside: true },
+];
+const vEl = document.getElementById('views'); const gUI = {};
+for (const v of VIEWS) {
+  if (!gUI[v.g]) { const d = document.createElement('div'); d.className = 'vgroup'; d.innerHTML = `<span class="vlabel">${v.g}</span>`; vEl.appendChild(d); gUI[v.g] = d; }
+  const b = document.createElement('button'); b.className = 'vbtn'; b.textContent = v.label; b.dataset.id = v.id; b.setAttribute('aria-pressed', 'false');
+  b.addEventListener('click', () => { goView(v.id); try { history.replaceState(null, '', '#' + v.id); } catch (e) { location.hash = v.id; } });
+  gUI[v.g].appendChild(b);
+}
+let anim = null, curView = VIEWS[0];
+const ease = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+// Виды заданы для экрана 16:9. На узком (телефон вертикально) сохраняем ширину кадра:
+// внутри помещений расширяем угол, снаружи — немного расширяем и отводим камеру назад.
+function frameFor(v) {
+  const a = camera.aspect, d2r = THREE.MathUtils.degToRad, r2d = THREE.MathUtils.radToDeg;
+  if (a >= 16 / 9) return { fov: v.fov, k: 1 };
+  const ref = Math.max(a, 16 / 9 * 0.65);
+  const need = 2 * Math.atan(Math.tan(d2r(v.fov) / 2) * ref / a);
+  const cap = d2r(v.inside ? 95 : 62);
+  if (need <= cap || v.inside) return { fov: r2d(Math.min(need, cap)), k: 1 };
+  return { fov: r2d(cap), k: Math.tan(need / 2) / Math.tan(cap / 2) };
+}
+function goView(id, instant = false) {
+  let v = VIEWS.find(x => x.id === id) || VIEWS[0]; curView = v;
+  for (const [k, g] of Object.entries(groups)) g.visible = !(v.hide || []).includes(k);
+  vEl.querySelectorAll('.vbtn').forEach(b => b.setAttribute('aria-pressed', b.dataset.id === v.id));
+  const fr = frameFor(v);
+  let cam = new THREE.Vector3(...v.cam); let tgt = new THREE.Vector3(...v.tgt);
+  if (fr.k !== 1) cam = tgt.clone().add(cam.clone().sub(tgt).multiplyScalar(fr.k));
+  v = Object.assign({}, v, { fov: fr.fov });
+  if (v.inside) tgt = cam.clone().add(tgt.clone().sub(cam).normalize().multiplyScalar(1.2));
+  controls.maxPolarAngle = v.inside ? Math.PI * 0.75 : Math.PI * 0.495;
+  if (gtao) gtao.updateGtaoMaterial({ radius: v.inside ? 0.45 : 0.9 });
+  if (instant || matchMedia('(prefers-reduced-motion: reduce)').matches) { camera.position.copy(cam); controls.target.copy(tgt); camera.fov = v.fov; camera.updateProjectionMatrix(); anim = null; return; }
+  anim = { t0: performance.now(), dur: 1400, p0: camera.position.clone(), q0: controls.target.clone(), f0: camera.fov, p1: cam, q1: tgt, f1: v.fov };
+}
+controls.addEventListener('start', () => { anim = null; });
+
+document.getElementById('t-day').addEventListener('click', () => setTime('day'));
+document.getElementById('t-eve').addEventListener('click', () => setTime('evening'));
+const drawer = document.getElementById('drawer'), openBtn = document.getElementById('open-mat');
+function setDrawer(open) { drawer.hidden = !open; openBtn.setAttribute('aria-expanded', open); if (open) document.getElementById('close-mat').focus(); }
+openBtn.addEventListener('click', () => setDrawer(drawer.hidden));
+document.getElementById('close-mat').addEventListener('click', () => { setDrawer(false); openBtn.focus(); });
+
+// ---------------- галерея рендеров ----------------
+const RENDERS = [
+  ['01_a-g', 'Фасады А и Г'], ['02_a-b', 'Фасады А и Б'], ['03_carport', 'Навес-парковка, фасад В'], ['04_aerial', 'С высоты'],
+  ['05_floor1', 'Разрез 1 этажа — магазин'], ['06_floor2', 'Разрез 2 этажа — кабинеты'], ['07_store', 'Торговый зал'], ['08_checkout', 'Кассы'],
+  ['09_corridor', 'Коридор офисов'], ['10_office', 'Кабинет'], ['11_evening', 'Вечер'],
+];
+const gal = document.getElementById('gallery'), galBtn = document.getElementById('open-gal');
+const gImg = document.getElementById('g-img'), gCap = document.getElementById('g-cap'), gTh = document.getElementById('g-thumbs');
+let gi = 0;
+RENDERS.forEach(([f, t], i) => { const b = document.createElement('button'); b.innerHTML = `<img src="renders/thumbs/${f}.jpg" alt="${t}" loading="lazy">`; b.addEventListener('click', () => showR(i)); gTh.appendChild(b); });
+function showR(i) { gi = (i + RENDERS.length) % RENDERS.length; const [f, t] = RENDERS[gi]; gImg.src = `renders/${f}.jpg`; gImg.alt = t; gCap.textContent = `${gi + 1} / ${RENDERS.length} · ${t}`;
+  gTh.querySelectorAll('button').forEach((b, k) => b.setAttribute('aria-current', k === gi)); gTh.children[gi].scrollIntoView({ block: 'nearest', inline: 'nearest' }); }
+function setGal(open) { gal.hidden = !open; galBtn.setAttribute('aria-expanded', open); if (open) { showR(gi); document.getElementById('close-gal').focus(); } }
+galBtn.addEventListener('click', () => setGal(true));
+document.getElementById('close-gal').addEventListener('click', () => { setGal(false); galBtn.focus(); });
+document.getElementById('g-prev').addEventListener('click', () => showR(gi - 1));
+document.getElementById('g-next').addEventListener('click', () => showR(gi + 1));
+addEventListener('keydown', e => {
+  if (!gal.hidden) { if (e.key === 'Escape') { setGal(false); galBtn.focus(); } if (e.key === 'ArrowLeft') showR(gi - 1); if (e.key === 'ArrowRight') showR(gi + 1); return; }
+  if (e.key === 'Escape' && !drawer.hidden) setDrawer(false);
+});
+addEventListener('resize', resizeAll);
+addEventListener('hashchange', () => goView(location.hash.slice(1)));
+
+const loadingEl = document.getElementById('loading');
+const loader = new GLTFLoader(); loader.setMeshoptDecoder(MeshoptDecoder);
+await setTime('day').catch(e => console.error(e));
+loader.load('model.glb', (gltf) => {
+  prepare(gltf.scene);
+  goView(location.hash.slice(1) || 'a-g', true);
+  resizeAll();
+  renderer.setAnimationLoop((now) => {
+    if (anim) {
+      const k = Math.min(1, (now - anim.t0) / anim.dur), e = ease(k);
+      camera.position.lerpVectors(anim.p0, anim.p1, e); controls.target.lerpVectors(anim.q0, anim.q1, e);
+      camera.fov = anim.f0 + (anim.f1 - anim.f0) * e; camera.updateProjectionMatrix(); if (k >= 1) anim = null;
+    }
+    controls.update(); composer.render();
+  });
+  requestAnimationFrame(() => requestAnimationFrame(() => { loadingEl.style.opacity = '0'; setTimeout(() => (loadingEl.hidden = true), 550); }));
+}, (ev) => { if (ev.total) loadingEl.textContent = `Загружаем модель… ${Math.round(ev.loaded / ev.total * 100)} %`; },
+(err) => { loadingEl.textContent = 'Не удалось загрузить модель. Обновите страницу.'; console.error(err); });
+window.__k3d = { renderer, scene, camera, controls, groups, goView, setTime };
+</script>
+
+</body></html>
